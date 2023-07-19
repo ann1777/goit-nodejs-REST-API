@@ -6,14 +6,16 @@ import {
   updateContact,
 } from "../models/contacts.js";
 
+import bodyWrapper from "../decorators/bodyWrapper.js";
+
 import HttpError from "../helpers/HTTPError.js";
 
-export const getAllContacts = async (req, res) => {
+const getAll = async (req, res) => {
   const result = await listContacts();
   return res.json(result);
 };
 
-export const getById = async (req, res) => {
+const getById = async (req, res) => {
   const { id } = req.params;
   const result = await getContactById(id);
   if (!result) {
@@ -22,7 +24,7 @@ export const getById = async (req, res) => {
   res.json(result);
 };
 
-export const deleteById = async (req, res) => {
+const deleteById = async (req, res) => {
   const { id } = req.params;
   const result = await removeContactById(id);
   if (!result) {
@@ -34,16 +36,24 @@ export const deleteById = async (req, res) => {
   });
 };
 
-export const add = async (req, res) => {
+const add = async (req, res) => {
   const result = await addContact(req.body);
   res.status(201).json(result);
 };
 
-export const updateById = async (req, res) => {
+const updateById = async (req, res) => {
   const { id } = req.params;
   const result = await updateContact(id, req.body);
   if (!result) {
     throw HttpError(404, `Movie with id=${id} not found`);
   }
   res.json(result);
+};
+
+export default {
+  getAll: bodyWrapper(getAll),
+  getById: bodyWrapper(getById),
+  add: bodyWrapper(add),
+  updateById: bodyWrapper(updateById),
+  deleteById: bodyWrapper(deleteById),
 };
