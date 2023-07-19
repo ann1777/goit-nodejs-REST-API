@@ -1,20 +1,15 @@
 import express from "express";
 import HttpError from "../../helpers/HTTPError.js";
-import Joi from "joi";
 import {
   listContacts,
   getContactById,
   updateContact,
   removeContactById,
 } from "../../models/contacts.js";
+import contactAddSchema from "../../schemas/contacts-schemas.js";
 
 const contactsRouter = express.Router();
 
-const addSchema = Joi.object({
-  name: Joi.string().required(),
-  email: Joi.string().email().required(),
-  phone: Joi.string().required(),
-});
 contactsRouter.get("/", async (req, res, next) => {
   try {
     const result = await listContacts();
@@ -47,7 +42,7 @@ contactsRouter.get("/:id", async (req, res, next) => {
 
 contactsRouter.post("/", async (req, res, next) => {
   try {
-    const { error } = addSchema.validate(req.body);
+    const { error } = contactAddSchema.validate(req.body);
     if (error) {
       throw HttpError(400, error.message);
     }
@@ -60,7 +55,7 @@ contactsRouter.post("/", async (req, res, next) => {
 
 contactsRouter.put("/:id", async (req, res, next) => {
   try {
-    const { error } = addSchema.validate(req.body);
+    const { error } = contactAddSchema.validate(req.body);
     if (error) {
       throw HttpError(400, error.message);
     }
