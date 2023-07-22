@@ -1,8 +1,8 @@
 import Joi from "joi";
 
 const contactAddSchema = Joi.object({
-  title: Joi.string().required().messages({
-    "any.required": `"title" must be exist`,
+  name: Joi.string().required().messages({
+    "any.required": `"name" must be exist`,
   }),
   email: Joi.string().email().required().messages({
     "any.required": `"email" must be exist`,

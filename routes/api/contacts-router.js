@@ -33,4 +33,3 @@ contactsRouter.put(
 contactsRouter.delete("/:id", contactsController.deleteById);
 
 export default contactsRouter;
-
