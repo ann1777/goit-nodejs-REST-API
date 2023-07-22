@@ -7,6 +7,8 @@ import {
   phoneDateRegexp,
 } from "../constants/contacts-constants.js";
 
+import { handleSaveError, runValidateAtUpdate } from "./hooks.js";
+
 const contactSchema = new Schema(
   {
     name: {
@@ -32,7 +34,10 @@ const contactSchema = new Schema(
   { versionKey: false, timestamp: true }
 );
 
+contactSchema.pre("findOneAndUpdate", runValidateAtUpdate);
+
 contactSchema.post("save", handleMongooseError);
+contactSchema.post("findOneAndUpdate", handleSaveError);
 
 const updateFavoriteSchema = new Schema({
   favorite: {
