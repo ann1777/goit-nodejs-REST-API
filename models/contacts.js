@@ -1,55 +1,56 @@
-import fs from "fs/promises";
-import path from "path";
-import { nanoid } from "nanoid";
+import { Schema, model } from "mongoose";
 
-const contactsPath = path.resolve("models", "./contacts.json");
-const updateContactsList = (contacts) =>
-  fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
+import handleMongooseError from "../helpers/handleMongooseError.js";
+import {
+  emailDateRegexp,
+  nameDateRegexp,
+  phoneDateRegexp,
+} from "../constants/contacts-constants.js";
 
-export const listContacts = async () => {
-  const result = await fs.readFile(contactsPath);
-  return JSON.parse(result);
+import { handleSaveError, runValidateAtUpdate } from "./hooks.js";
+
+const contactSchema = new Schema(
+  {
+    name: {
+      type: String,
+      match: nameDateRegexp,
+      required: [true, "Set name for contact"],
+    },
+    email: {
+      type: String,
+      match: emailDateRegexp,
+      required: [true, "Set email for contact"],
+    },
+    phone: {
+      type: String,
+      match: phoneDateRegexp,
+      required: [true, "Set phone for contact"],
+    },
+    favorite: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { versionKey: false, timestamp: true }
+);
+
+contactSchema.pre("findOneAndUpdate", runValidateAtUpdate);
+
+contactSchema.post("save", handleMongooseError);
+contactSchema.post("findOneAndUpdate", handleSaveError);
+
+const updateFavoriteSchema = new Schema({
+  favorite: {
+    type: Boolean,
+    required: true,
+  },
+});
+
+const schemas = {
+  contactSchema,
+  updateFavoriteSchema,
 };
 
-export const getContactById = async (id) => {
-  const contacts = await listContacts();
-  const result = contacts.filter((contact) => contact.id === id);
-  return result[0] || null;
-};
+const Contact = model("contact", contactSchema);
 
-export const removeContactById = async (id) => {
-  const contacts = await listContacts();
-  const index = contacts.findIndex((contact) => contact.id === id);
-  if (index === -1) {
-    return null;
-  }
-  const [result] = contacts.splice(index, 1);
-  await updateContactsList(contacts);
-  return result;
-};
-
-export const addContact = async (body) => {
-  const contacts = await listContacts();
-  const newContact = {
-    id: nanoid(),
-    name: body.name,
-    email: body.email,
-    phone: body.phone,
-  };
-  contacts.push(newContact);
-  await updateContactsList(contacts);
-  return newContact;
-};
-
-export const updateContact = async (id, body) => {
-  const outdatedContact = await getContactById(id);
-  const updatedContact = {
-    id: outdatedContact.id,
-    name: body.name ? body.name : outdatedContact.name,
-    email: body.email ? body.email : outdatedContact.email,
-    phone: body.phone ? body.phone : outdatedContact.phone,
-  };
-  await removeContactById(id);
-  await addContact(updatedContact);
-  return updatedContact;
-};
+export { Contact, schemas };
