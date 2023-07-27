@@ -1,4 +1,4 @@
-import { Contact, schemas } from "../models/contacts.js";
+import Contact from "../models/contact.js";
 
 import bodyWrapper from "../decorators/bodyWrapper.js";
 import HttpError from "../helpers/HTTPError.js";
@@ -30,7 +30,7 @@ const deleteById = async (req, res) => {
 };
 
 const add = async (req, res) => {
-  const { error } = schemas.addContact.validate(req.body);
+  const { error } = Contact.contactSchema.validate(req.body);
   if (error) {
     throw new Error(400, error.message);
   }
@@ -39,7 +39,7 @@ const add = async (req, res) => {
 };
 
 const updateById = async (req, res) => {
-  const { error } = schemas.addContact.validate(req.body);
+  const { error } = Contact.contactSchema.validate(req.body);
   if (error) {
     throw new Error(400, error.message);
   }
@@ -55,7 +55,7 @@ const updateById = async (req, res) => {
 };
 
 const updateFavorite = async (req, res) => {
-  const { error } = schemas.updateFavoriteSchema.validate(req.body);
+  const { error } = Contact.updateFavoriteSchema.validate(req.body);
   if (error) {
     throw new Error(400, "The favorite field is missing");
   }

@@ -50,11 +50,9 @@ const updateFavoriteSchema = new Schema({
   },
 });
 
-const schemas = {
+const Contact = model("contact", {
   contactSchema,
   updateFavoriteSchema,
-};
+});
 
-const Contact = model("contact", contactSchema);
-
-export { Contact, schemas };
+export default Contact;
