@@ -1,1 +1,2 @@
-export { default as isEmptyBody } from "./isEmptyBody.js";
+export { isEmptyBody } from "./isEmptyBody.js";
+export { isValidId } from "./isValidId.js";

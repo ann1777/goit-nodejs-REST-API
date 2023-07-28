@@ -9,7 +9,7 @@ const userSignUpValidate = validateBody(userSchemas.userSignUpSchema);
 
 const userSignInValidate = validateBody(userSchemas.userSignInSchema);
 
-authRouter.post("signup", userSignUpValidate, authController.signup);
-authRouter.post("signIn", userSignInValidate, authController.signIn);
+authRouter.post("register", userSignUpValidate, authController.register);
+authRouter.post("login", userSignInValidate, authController.login);
 
 export default authRouter;
