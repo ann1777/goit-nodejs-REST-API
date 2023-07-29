@@ -1,6 +1,5 @@
 import { Schema, model } from "mongoose";
 
-import handleMongooseError from "../helpers/handleMongooseError.js";
 import {
   emailDateRegexp,
   nameDateRegexp,
@@ -40,7 +39,7 @@ const contactSchema = new Schema(
 
 contactSchema.pre("findOneAndUpdate", runValidateAtUpdate);
 
-contactSchema.post("save", handleMongooseError);
+contactSchema.post("save", handleSaveError);
 contactSchema.post("findOneAndUpdate", handleSaveError);
 
 const updateFavoriteSchema = new Schema({
