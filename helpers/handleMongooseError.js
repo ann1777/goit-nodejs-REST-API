@@ -1,5 +1,6 @@
+import { HttpCode } from "../constants/user-constants.js";
 const handleMongooseError = (error, data, next) => {
-  error.status = 400;
+  error.status = HttpCode.BAD_REQUEST;
   next();
 };
 
