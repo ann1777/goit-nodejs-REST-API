@@ -9,7 +9,7 @@ const getAll = async (req, res) => {
     { owner },
     "-createdAt -updatedAt"
   ).populate("owner", "name email");
-  return res.status(HttpCode.OK).json(result);
+  res.json(result);
 };
 
 const getById = async (req, res) => {
