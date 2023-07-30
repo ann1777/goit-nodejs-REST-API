@@ -5,12 +5,10 @@ import HttpError from "../helpers/HTTPError.js";
 
 const getAll = async (req, res) => {
   const { _id: owner } = req.user;
-  const { page = 1, limit = 20 } = req.query;
-  const skip = (page - 1) * limit;
-  const result = await Contact.find({ owner }, "-createdAt -updatedAt", {
-    skip,
-    limit,
-  }).populate("owner", "name email");
+  const result = await Contact.find(
+    { owner },
+    "-createdAt -updatedAt"
+  ).populate("owner", "name email");
   return res.status(HttpCode.OK).json(result);
 };
 
@@ -21,23 +19,6 @@ const getById = async (req, res) => {
     throw HttpError(HttpCode.NOT_FOUND, `Contact with id=${id} not found`);
   }
   res.json(result);
-};
-
-const getFavorite = async (req, res) => {
-  const { _id: owner } = req.user;
-  const { isFavorite = true, page = 1, limit = 20 } = req.query;
-  const skip = (page - 1) * limit;
-
-  const result = await Contact.find(
-    { owner, favorite: isFavorite },
-    "-createdAt -updatedAt",
-    {
-      skip,
-      limit,
-    }
-  ).populate("owner", "name email");
-
-  return res.status(HttpCode.OK).json(result);
 };
 
 const deleteById = async (req, res) => {
@@ -100,5 +81,4 @@ export default {
   updateById: bodyWrapper(updateById),
   deleteById: bodyWrapper(deleteById),
   updateFavorite: bodyWrapper(updateFavorite),
-  getFavorite: bodyWrapper(getFavorite),
 };

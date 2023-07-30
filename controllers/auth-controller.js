@@ -53,7 +53,7 @@ const login = async (req, res, next) => {
     const payload = { id: user._id };
 
     const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "23h" });
-    await User.findOneAndUpdate(user._id, { token });
+    await User.findOneAndUpdate(payload, { token });
     res.status(HttpCode.OK).json({
       status: "success",
       code: HttpCode.OK,
@@ -83,37 +83,11 @@ const current = (req, res) => {
   });
 };
 
-const updateSubscription = async (req, res) => {
-  const { subscription } = req.body;
-  const { id } = req.user;
-
-  const allowedSubscriptions = ["starter", "pro", "bussiness"];
-  if (!allowedSubscriptions.includes(subscription)) {
-    throw new HttpError(
-      HttpError.BAD_REQUEST,
-      "Invalid subscription value. Allowed values are 'starter', 'pro', 'business'."
-    );
-  }
-  const updatedUser = await User.findByIdAndUpdate(
-    id,
-    { subscription },
-    { new: true }
-  );
-  res.status(HttpCode.OK).json({
-    status: "success",
-    code: HttpCode.OK,
-    data: {
-      email: updatedUser.email,
-      subscription: updatedUser.subscription,
-    },
-  });
-};
-
 const logout = async (req, res, next) => {
   try {
     const { _id } = req.user;
     await User.findOneAndUpdate(_id, { token: "" });
-    res.status(HttpCode.NO_CONTENT, "No content");
+    res.status(HttpCode.NO_CONTENT).json({ message: "SignOut success" });
   } catch (error) {
     throw new HttpError(HttpCode.UNAUTHORIZED, "Unauthorized");
   }
@@ -124,5 +98,4 @@ export default {
   login: bodyWrapper(login),
   logout: bodyWrapper(logout),
   current: bodyWrapper(current),
-  updateSubscription: bodyWrapper(updateSubscription),
 };

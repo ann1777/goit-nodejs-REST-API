@@ -18,7 +18,7 @@ export const checkJwt = async (req, res, next) => {
   try {
     const { id } = jwt.verify(token, JWT_SECRET_KEY);
     const user = await User.findById({ id });
-    if (!user || !user.token) {
+    if (!user) {
       throw HttpError(HttpCode.UNAUTHORIZED);
     }
     req.user = user;
