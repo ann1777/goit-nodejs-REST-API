@@ -5,13 +5,11 @@ import HttpError from "../helpers/HTTPError.js";
 
 const getAll = async (req, res) => {
   const { _id: owner } = req.user;
-  const { page = 1, limit = 20 } = req.query;
-  const skip = (page - 1) * limit;
-  const result = await Contact.find({ owner }, "-createdAt -updatedAt", {
-    skip,
-    limit,
-  }).populate("owner", "name email");
-  return res.status(HttpCode.OK).json(result);
+  const result = await Contact.find(
+    { owner },
+    "-createdAt -updatedAt"
+  ).populate("owner", "name email");
+  res.json(result);
 };
 
 const getById = async (req, res) => {
@@ -21,23 +19,6 @@ const getById = async (req, res) => {
     throw HttpError(HttpCode.NOT_FOUND, `Contact with id=${id} not found`);
   }
   res.json(result);
-};
-
-const getFavorite = async (req, res) => {
-  const { _id: owner } = req.user;
-  const { isFavorite = true, page = 1, limit = 20 } = req.query;
-  const skip = (page - 1) * limit;
-
-  const result = await Contact.find(
-    { owner, favorite: isFavorite },
-    "-createdAt -updatedAt",
-    {
-      skip,
-      limit,
-    }
-  ).populate("owner", "name email");
-
-  return res.status(HttpCode.OK).json(result);
 };
 
 const deleteById = async (req, res) => {
@@ -59,7 +40,7 @@ const add = async (req, res) => {
     throw new Error(HttpCode.BAD_REQUEST, error.message);
   }
   const result = await Contact.create(...req.body, owner);
-  res.status(201).json(result);
+  res.status(HttpCode.CREATED).json(result);
 };
 
 const updateById = async (req, res) => {
@@ -75,7 +56,7 @@ const updateById = async (req, res) => {
   if (!result) {
     throw HttpError(HttpCode.NOT_FOUND, `Movie with id=${id} not found`);
   }
-  res.status(200).json(result);
+  res.json(result);
 };
 
 const updateFavorite = async (req, res) => {
@@ -100,5 +81,4 @@ export default {
   updateById: bodyWrapper(updateById),
   deleteById: bodyWrapper(deleteById),
   updateFavorite: bodyWrapper(updateFavorite),
-  getFavorite: bodyWrapper(getFavorite),
 };

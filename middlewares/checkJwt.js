@@ -10,22 +10,20 @@ const { JWT_SECRET_KEY } = process.env;
 export const checkJwt = async (req, res, next) => {
   const { authorization = "" } = req.headers;
   const [bearer, token] = authorization?.split(" ");
-  const payload = jwt.verify(token, JWT_SECRET_KEY);
-  const user = await User.findOne({ _id: payload.id });
-  if (bearer !== "Bearer" || !token || !user || !user.token) {
-    throw new HttpError(HttpCode.UNAUTHORIZED, "Unauthorized");
-  }
   try {
+    if (bearer !== "Bearer" || !token) {
+      throw new HttpError(HttpCode.UNAUTHORIZED);
+    }
     const { id } = jwt.verify(token, JWT_SECRET_KEY);
-    const user = await User.findById({ id });
+    const user = await User.findById(id);
     if (!user || !user.token) {
-      throw HttpError(HttpCode.UNAUTHORIZED);
+      throw new HttpError(HttpCode.UNAUTHORIZED);
     }
     req.user = user;
     req.token = token;
     next();
   } catch (error) {
-    throw HttpError(HttpCode.UNAUTHORIZED, "Unauthorized");
+    throw new HttpError(HttpCode.UNAUTHORIZED);
   }
 };
 
