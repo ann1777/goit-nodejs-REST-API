@@ -40,7 +40,7 @@ const add = async (req, res) => {
     throw new Error(HttpCode.BAD_REQUEST, error.message);
   }
   const result = await Contact.create(...req.body, owner);
-  res.status(201).json(result);
+  res.status(HttpCode.CREATED).json(result);
 };
 
 const updateById = async (req, res) => {
@@ -56,7 +56,7 @@ const updateById = async (req, res) => {
   if (!result) {
     throw HttpError(HttpCode.NOT_FOUND, `Movie with id=${id} not found`);
   }
-  res.status(200).json(result);
+  res.json(result);
 };
 
 const updateFavorite = async (req, res) => {

@@ -13,16 +13,12 @@ const register = async (req, res, next) => {
   const { error } = User.userSchema.validate(req.body);
   if (error) {
     throw new Error(
-      HttpCode.CONFLICT,
+      HttpCode.BAD_REQUEST,
       `Помилка від Joi або іншої бібліотеки валідації`
     );
   }
   if (user) {
-    res.status(HttpCode.CONFLICT).json({
-      status: "error",
-      code: HttpCode.CONFLICT,
-      message: `Email ${email} is already in use`,
-    });
+    throw new Error(HttpCode.CONFLICT, `Email ${email} is already in use`);
   }
   const hashPassword = await bcrypt.hash(password, 10);
   const newUser = await User.create({ ...req.body, password: hashPassword });
@@ -41,12 +37,7 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email, password });
-  const isPasswordCorrect = bcrypt.compareSync(password, user.password);
-  if (!user || !isPasswordCorrect) {
-    throw HttpError(HttpCode.UNAUTHORIZED, `Email or password is wrong`);
-  }
   const payload = { id: user._id };
-
   const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "23h" });
   const result = await User.findOneAndUpdate(payload, { token });
   res.json({
@@ -63,28 +54,24 @@ const login = async (req, res, next) => {
       `Помилка від Joi або іншої бібліотеки валідації`
     );
   }
-  res.status(HttpCode.UNAUTHORIZED).json({
-    status: "error",
-    code: HttpCode.UNAUTHORIZED,
-    message: "Invalid credentials",
-  });
 };
 
 const current = (req, res) => {
   const { email, subscription } = req.user;
   res.json({
-    email,
-    subscription,
+    status: "success",
+    code: HttpCode.OK,
+    date: {
+      email,
+      subscription,
+    },
   });
 };
 
 const logout = async (req, res, next) => {
   const { _id } = req.user;
-  const result = await User.findOneAndUpdate(_id, { token: "" });
+  await User.findOneAndUpdate(_id, { token: "" });
   res.status(HttpCode.NO_CONTENT).json({ message: "SignOut success" });
-  if (!result) {
-    throw new HttpError(HttpCode.UNAUTHORIZED);
-  }
 };
 
 export default {
