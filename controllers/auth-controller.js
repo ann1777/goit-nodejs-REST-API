@@ -119,10 +119,33 @@ const updateAvatar = async (req, res) => {
     return avatar.resize(250, 250).write(tempUpload);
   });
   await fs.rename(tempUpload, uploadPath);
-  const avatarURL = path.join("avatars", filename);
+  const avatarURL = await moveAvatarToPublic(_id, tempUpload);
   await User.findByIdAndUpdate(_id, { avatarURL });
 
   res.json({ avatarURL });
+};
+
+const moveAvatarToPublic = async (id, tempAvatarPath) => {
+  try {
+    const temp = path.join(__dirname, "../temp");
+    await fs.mkdir(temp, { recursive: true });
+
+    const avatar = await Jimp.read(tempAvatarPath);
+    avatar.resize(250, 250);
+
+    const uniqueFilename = `${id}_${avatar.filename}.png`;
+    const avatarPath = path.join(avatarsDir, uniqueFilename);
+
+    await avatar.writeAsync(avatarPath);
+
+    const avatarURL = `/avatars/${uniqueFilename}`;
+    await User.findByIdAndUpdate(id, { avatarURL });
+
+    await fs.unlink(tempAvatarPath);
+    return avatarURL;
+  } catch (error) {
+    throw new Error("Failed moveAvatarToPublic");
+  }
 };
 
 export default {
@@ -132,4 +155,5 @@ export default {
   current: bodyWrapper(current),
   updateSubscription: bodyWrapper(updateSubscription),
   updateAvatar: bodyWrapper(updateAvatar),
+  moveAvatarToPublic: bodyWrapper(moveAvatarToPublic),
 };
