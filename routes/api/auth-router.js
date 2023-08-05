@@ -12,6 +12,7 @@ const userSignInValidate = validateBody(userSchemas.userSignInSchema);
 authRouter.post("/register", userSignUpValidate, authController.register);
 authRouter.post("/login", userSignInValidate, authController.login);
 authRouter.post("/logout", checkJwt, authController.logout);
+authRouter.get("/", checkJwt, authController.getAll);
 authRouter.get("/current", checkJwt, authController.current);
 authRouter.patch("/", checkJwt, authController.updateSubscription);
 authRouter.patch(
@@ -20,5 +21,7 @@ authRouter.patch(
   upload.single("avatar"),
   authController.updateAvatar
 );
+authRouter.delete("/:id", checkJwt, authController.removeById);
+authRouter.delete("/", checkJwt, authController.removeAll);
 
 export default authRouter;

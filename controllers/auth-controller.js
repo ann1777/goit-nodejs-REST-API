@@ -70,6 +70,16 @@ const login = async (req, res, next) => {
   }
 };
 
+const getAll = async (req, res) => {
+  const { _id: user } = req.body;
+  const result = await User.find({ user }, "-createdAt -updatedAt").populate(
+    "user",
+    "name email"
+  );
+  res.json(result);
+  console.log(result);
+};
+
 const current = (req, res) => {
   const { email, subscription } = req.user;
   res.json({
@@ -148,12 +158,52 @@ const moveAvatarToPublic = async (id, tempAvatarPath) => {
   }
 };
 
+const getById = async (req, res) => {
+  const { id } = req.params;
+  const result = await User.findById(id);
+  if (!result) {
+    throw HttpError(404, `Contact with id=${id} not found`);
+  }
+  res.json(result);
+};
+
+const removeById = async (id) => {
+  try {
+    const removedUser = await User.findByIdAndRemove(id);
+
+    if (!removedUser) {
+      throw new Error(`User with id=${id} not found.`);
+    }
+
+    console.log(`User with id=${id} has been removed from the database.`);
+    return removedUser;
+  } catch (error) {
+    console.error("Error removing user by id:", error.message);
+    throw new Error("Failed to remove user from the database.");
+  }
+};
+
+const removeAll = async () => {
+  try {
+    // Use the User model to delete all documents from the users collection
+    await User.deleteMany({});
+    console.log("All users have been removed from the database.");
+  } catch (error) {
+    console.error("Error removing all users:", error.message);
+    throw new Error("Failed to remove all users from the database.");
+  }
+};
+
 export default {
   register: bodyWrapper(register),
   login: bodyWrapper(login),
   logout: bodyWrapper(logout),
+  getById: bodyWrapper(getById),
+  getAll: bodyWrapper(getAll),
   current: bodyWrapper(current),
   updateSubscription: bodyWrapper(updateSubscription),
   updateAvatar: bodyWrapper(updateAvatar),
   moveAvatarToPublic: bodyWrapper(moveAvatarToPublic),
+  removeById: bodyWrapper(removeById),
+  removeAll: bodyWrapper(removeAll),
 };
