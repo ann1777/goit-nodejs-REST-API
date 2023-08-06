@@ -41,6 +41,7 @@ const contactSchema = new Schema(
 contactSchema.pre("findOneAndUpdate", runValidateAtUpdate);
 
 contactSchema.post("save", handleSaveError);
+
 contactSchema.post("findOneAndUpdate", handleSaveError);
 
 const updateFavoriteSchema = new Schema({
