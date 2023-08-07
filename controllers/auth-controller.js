@@ -143,7 +143,7 @@ const moveAvatarToPublic = async (id, tempAvatarPath) => {
     const avatar = await Jimp.read(tempAvatarPath);
     avatar.resize(250, 250);
 
-    const uniqueFilename = `${id}_${avatar.filename}.png`;
+    const uniqueFilename = `${id}_${avatar.filename}`;
     const avatarPath = path.join(avatarsDir, uniqueFilename);
 
     await avatar.writeAsync(avatarPath);
