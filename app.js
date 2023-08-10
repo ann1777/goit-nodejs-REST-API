@@ -1,28 +1,30 @@
-import nodemailer from 'nodemailer';
+import express from 'express';
+import logger from 'morgan';
+import cors from 'cors';
 import 'dotenv/config';
 
-const { UKR_NET_EMAIL, UKR_NET_PASSWD } = process.env;
+import contactsRouter from './routes/api/contacts-router.js';
+import authRouter from './routes/api/auth-router.js';
 
-const nodemailerConfig = {
-  host: 'smtp.ukr.net',
-  port: 465,
-  secure: true,
-  auth: {
-    user: UKR_NET_EMAIL,
-    pass: UKR_NET_PASSWD,
-  },
-};
+const app = express();
 
-const transport = nodemailer.createTransport(nodemailerConfig);
+const formatsLogger = app.get('env') === 'development' ? 'dev' : 'short';
 
-const email = {
-  from: UKR_NET_EMAIL,
-  to: 'gehogi2193@vreaa.com',
-  subject: 'Test email',
-  html: '<strong>Test email</strong>',
-};
+app.use(logger(formatsLogger));
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
 
-transport
-  .sendMail(email)
-  .then(console.log('Success send email'))
-  .catch((error) => console.log(error.message));
+app.use('/api/users', authRouter);
+app.use('/api/contacts', contactsRouter);
+
+app.use((req, res) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
+app.use((err, req, res, next) => {
+  const { status = 500, message = 'Server error' } = err;
+  res.status(status).json({ message });
+});
+
+export default app;
