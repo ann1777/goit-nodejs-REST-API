@@ -15,7 +15,7 @@ authRouter.post(
   userSignUpValidate,
   authController.registrationController
 );
-authRouter.get('/verify/:verificationCode', authController.verifyUserEmail);
+authRouter.get('/verify/:verificationToken', authController.verifyUserEmail);
 authRouter.post('/verify', userEmailValidate, authController.resendVerifyEmail);
 authRouter.post('/login', userSignInValidate, authController.loginController);
 authRouter.post('/logout', checkJwt, authController.logoutController);

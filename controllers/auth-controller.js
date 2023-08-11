@@ -21,6 +21,7 @@ const registrationController = async (req, res, next) => {
       `Помилка від Joi або іншої бібліотеки валідації`
     );
   }
+
   if (user) {
     return res.status(HttpCode.CONFLICT).json({
       status: 'error',
@@ -28,6 +29,7 @@ const registrationController = async (req, res, next) => {
       message: 'Email in use',
     });
   }
+
   try {
     const newUser = await User.create({ name, email, password, gender });
     return res.status(HttpCode.CREATED).json({
@@ -47,43 +49,52 @@ const registrationController = async (req, res, next) => {
 };
 
 const verifyUserEmail = async (req, res) => {
-  const { verificationCode } = req.params;
-  const user = await User.findOne({ verificationCode });
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
   if (!user) {
-    throw HttpError(404, 'Email not found');
+    throw HttpError(404, 'User not found');
   }
 
   await User.findByIdAndUpdate(user._id, {
     verify: true,
-    verificationCode: '',
+    verificationToken: '',
   });
 
   res.json({
-    message: 'Email verify success',
+    message: 'Verification successful',
   });
 };
 
 const resendVerifyEmail = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
-  if (!user) {
-    throw HttpError(404, 'Email not found');
+  const { error } = User.userSchema.validate(req.body);
+  if (!email) {
+    throw HttpError(400, 'missing required field email');
+  }
+
+  if (error) {
+    throw HttpError(
+      HttpCode.BAD_REQUEST,
+      `Помилка від Joi або іншої бібліотеки валідації`
+    );
   }
 
   if (user.verify) {
-    throw HttpError(400, 'Email already verify');
+    throw HttpError(400, 'Verification has already been passed');
   }
 
   const verifyEmail = {
     to: email,
     subject: 'Verify email',
-    html: `<a href="${BASE_URL}/api/auth/verify/${user.verificationCode}" target="_blank">Click verify email</a>`,
+    html: `<a href="${BASE_URL}/api/auth/verify/${user.verificationToken}" target="_blank">Click verify email</a>`,
+    date: { email: user.email },
   };
 
   await sendEmail(verifyEmail);
 
   res.json({
-    message: 'Verify email resend',
+    message: 'Verification email sent',
   });
 };
 
@@ -95,12 +106,14 @@ const loginController = async (req, res, next) => {
   }
 
   if (!user.verify) {
-    throw HttpError(401, 'Email not verify');
+    throw HttpError(401, 'Login is not allowed because of Email is not verify');
   }
+
   const passwordCompare = await bcrypt.compare(password, user.password);
   if (!passwordCompare) {
     throw HttpError(401, 'Email or password invalid');
   }
+
   const id = user._id;
   const payload = { id };
   const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: '23h' });
@@ -124,13 +137,14 @@ const currentController = async (req, res, next) => {
   const id = req.user._id;
   const user = await User.findById(id);
   if (user) {
-    return res.status(HttpCode.OK).json({
+    return res.json({
       status: 'success',
       code: HttpCode.OK,
       message: 'Current user data',
       data: { user },
     });
   }
+
   throw new HttpError(404, 'Not Found');
 };
 
@@ -143,7 +157,7 @@ const logoutController = async (req, res, next) => {
 const updateController = async (req, res, next) => {
   const id = req.user._id;
   const user = await User.updateSubscription(id, req.body);
-  return res.status(HttpCode.OK).json({
+  return res.json({
     status: 'success',
     code: HttpCode.OK,
     data: {
@@ -167,7 +181,8 @@ const uploadAvatarController = async (req, res, next) => {
   } catch (e) {
     console.log(e.message);
   }
-  return res.status(HttpCode.OK).json({
+
+  return res.json({
     status: 'success',
     code: HttpCode.OK,
     date: { avatar: avatarUrl },
@@ -177,7 +192,7 @@ const uploadAvatarController = async (req, res, next) => {
 const removeByIdController = async (req, res, next) => {
   const id = String(req.user._id);
   User.filter((user) => user.id !== id);
-  return res.status(HttpCode.OK).json({
+  return res.json({
     status: 'success',
     code: HttpCode.OK,
     date: { User },
@@ -186,7 +201,7 @@ const removeByIdController = async (req, res, next) => {
 
 const removeAllController = async (req, res, next) => {
   User.length = 0;
-  return res.status(HttpCode.OK).json({
+  return res.json({
     status: 'success',
     code: HttpCode.OK,
     data: { message: 'All users have been removed' },

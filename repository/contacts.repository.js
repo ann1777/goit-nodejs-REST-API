@@ -1,4 +1,4 @@
-const Contacts = require('../model/contactModel');
+const Contact = require('../model/contactModel');
 
 const listContacts = async (userId, query) => {
   const {
@@ -13,7 +13,7 @@ const listContacts = async (userId, query) => {
   if (favorite !== null) {
     searchOptions.favorite = favorite;
   }
-  const results = await Contacts.paginate(searchOptions, {
+  const results = await Contact.paginate(searchOptions, {
     limit,
     offset,
     sort: {
@@ -23,7 +23,7 @@ const listContacts = async (userId, query) => {
     select: filter ? filter.split('|').join(' ') : '',
     populate: {
       path: 'owner',
-      select: 'name email gender createdAt updatedAt',
+      select: 'name email gender subscription',
     },
   });
   const { docs: contacts } = results;
@@ -32,18 +32,18 @@ const listContacts = async (userId, query) => {
 };
 
 const getContactById = async (contactId, userId) => {
-  const result = await Contacts.findOne({
+  const result = await Contact.findOne({
     _id: contactId,
     owner: userId,
   }).populate({
     path: 'owner',
-    select: 'name email gender createdAt updatedAt',
+    select: 'name email gender subscription',
   });
   return result;
 };
 
 const removeContact = async (contactId, userId) => {
-  const result = await Contacts.findOneAndRemove({
+  const result = await Contact.findOneAndRemove({
     _id: contactId,
     owner: userId,
   });
@@ -51,12 +51,12 @@ const removeContact = async (contactId, userId) => {
 };
 
 const addContact = async (body) => {
-  const result = await Contacts.create(body);
+  const result = await Contact.create(body);
   return result;
 };
 
 const updateContact = async (contactId, body, userId) => {
-  const result = await Contacts.findOneAndUpdate(
+  const result = await Contact.findOneAndUpdate(
     { _id: contactId, owner: userId },
     { ...body },
     { new: true }
@@ -65,7 +65,7 @@ const updateContact = async (contactId, body, userId) => {
 };
 
 export default {
-  Contacts,
+  Contact,
   listContacts,
   getContactById,
   removeContact,
