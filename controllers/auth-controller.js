@@ -1,209 +1,221 @@
-import { User } from "../models/user.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import path, { dirname } from "path";
-import fs from "fs/promises";
-import gravatar from "gravatar";
-import Jimp from "jimp";
-import { fileURLToPath } from "url";
-import { HttpCode } from "../constants/user-constants.js";
-import bodyWrapper from "../decorators/bodyWrapper.js";
-import HttpError from "../helpers/HTTPError.js";
-const { JWT_SECRET_KEY } = process.env;
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+import jwt from 'jsonwebtoken';
+import fs, { mkdir } from 'fs/promises';
+import path from 'path';
+import bcrypt from 'bcryptjs';
+import User from '../repository/users.repository.js';
+import UploadService from '../services/file-upload.js';
+import 'dotenv/config';
+import { HttpCode } from '../constants/user-constants.js';
+import bodyWrapper from '../decorators/bodyWrapper.js';
+import { HttpError, sendEmail } from '../helpers/index.js';
 
-const register = async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
+const { JWT_SECRET_KEY, BASE_URL } = process.env;
+
+const registrationController = async (req, res, next) => {
+  const { name, email, password, gender } = req.body;
+  const user = await User.findByEmail(email);
   const { error } = User.userSchema.validate(req.body);
   if (error) {
-    throw new Error(
+    throw HttpError(
       HttpCode.BAD_REQUEST,
       `Помилка від Joi або іншої бібліотеки валідації`
     );
   }
+
   if (user) {
-    throw new Error(HttpCode.CONFLICT, `Email ${email} is already in use`);
+    return res.status(HttpCode.CONFLICT).json({
+      status: 'error',
+      code: HttpCode.CONFLICT,
+      message: 'Email in use',
+    });
   }
-  const hashPassword = await bcrypt.hash(password, 10);
-  const avatarURL = gravatar.url(email);
-  const newUser = await User.create({
-    ...req.body,
-    password: hashPassword,
-    avatarURL,
+
+  try {
+    const { verificationToken } = req.params;
+    const newUser = await User.create({ name, email, password, gender });
+
+    const verifyEmail = {
+      to: email,
+      subject: 'Verify email',
+      html: `<a href="${BASE_URL}/api/auth/verify/${verificationToken}" target="_blank">Click to verify your email</a>`,
+    };
+
+    await sendEmail(verifyEmail);
+
+    return res.status(HttpCode.CREATED).json({
+      status: 'success',
+      code: HttpCode.CREATED,
+      data: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        gender: newUser.gender,
+        avatar: newUser.avatar,
+      },
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+const verifyUserEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
+  if (!user) {
+    throw HttpError(404, 'User not found');
+  }
+
+  await User.findByIdAndUpdate(user._id, {
+    verify: true,
+    verificationToken: '',
   });
-  res.status(HttpCode.CREATED).json({
-    status: "success",
-    code: HttpCode.CREATED,
-    data: {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      subscription: newUser.subscription,
-    },
-    password: hashPassword,
-    avatarURL,
+
+  res.json({
+    message: 'Verification successful',
   });
 };
 
-const login = async (req, res, next) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email, password });
-  const payload = { id: user._id };
-  const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "23h" });
-  const result = await User.findOneAndUpdate(payload, { token });
+const resendVerifyEmail = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (user.verify) {
+    throw HttpError(400, 'Verification has already been passed');
+  }
+
+  const verifyEmail = {
+    to: email,
+    subject: 'Verify email',
+    html: `<a href="${BASE_URL}/api/auth/verify/${user.verificationToken}" target="_blank">Click verify email</a>`,
+    date: { email: user.email },
+  };
+
+  await sendEmail(verifyEmail);
+
   res.json({
-    status: "success",
+    message: 'Verification email sent',
+  });
+};
+
+const loginController = async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await User.findByEmail(email);
+  if (!user) {
+    throw HttpError(401, 'Email or password invalid');
+  }
+
+  if (!user.verify) {
+    throw HttpError(401, 'Login is not allowed because of Email is not verify');
+  }
+
+  const passwordCompare = await bcrypt.compare(password, user.password);
+  if (!passwordCompare) {
+    throw HttpError(401, 'Email or password invalid');
+  }
+
+  const id = user._id;
+  const payload = { id };
+  const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: '23h' });
+  await User.updateToken(id, { token });
+  res.json({
+    status: 'success',
     code: HttpCode.OK,
     date: {
       token,
-      user: { email: user.email, subscription: user.subscription },
+      user: {
+        email: user.email,
+        subscription: user.subscription,
+        id: user.id,
+        gender: user.gender,
+      },
     },
   });
-  if (!result) {
-    throw new HttpError(
-      HttpCode.BAD_REQUEST,
-      `Помилка від Joi або іншої бібліотеки валідації`
-    );
+};
+
+const currentController = async (req, res, next) => {
+  const id = req.user._id;
+  const user = await User.findById(id);
+  if (user) {
+    return res.json({
+      status: 'success',
+      code: HttpCode.OK,
+      message: 'Current user data',
+      data: { user },
+    });
   }
+
+  throw new HttpError(404, 'Not Found');
 };
 
-const getAll = async (req, res) => {
-  const { _id: user } = req.body;
-  const result = await User.find({ user }, "-createdAt -updatedAt").populate(
-    "user",
-    "name email"
-  );
-  res.json(result);
-  console.log(result);
+const logoutController = async (req, res, next) => {
+  const id = req.user._id;
+  await User.updateToken(id, { token: '' });
+  return res.status(HttpCode.NO_CONTENT).json({ message: 'Logout success' });
 };
 
-const current = (req, res) => {
-  const { email, subscription } = req.user;
-  res.json({
-    status: "success",
+const updateController = async (req, res, next) => {
+  const id = req.user._id;
+  const user = await User.updateSubscription(id, req.body);
+  return res.json({
+    status: 'success',
     code: HttpCode.OK,
-    date: {
-      email,
-      subscription,
+    data: {
+      email: user.email,
+      subscription: user.subscription,
     },
   });
 };
 
-const logout = async (req, res, next) => {
-  const { _id } = req.user;
-  await User.findOneAndUpdate(_id, { token: "" });
-  res.status(HttpCode.NO_CONTENT).json({ message: "SignOut success" });
-};
-
-const updateSubscription = async (res, req) => {
-  const { error } = User.updateSubscriptionSchema.validate(req.body);
-  if (error) {
-    throw new Error(
-      HttpCode.BAD_REQUEST,
-      "Missing subscription field or set incorrectly"
-    );
+const uploadAvatarController = async (req, res, next) => {
+  const id = String(req.user._id);
+  const file = req.file;
+  const AVATAR_OF_USERS = process.env.AVATAR_OF_USERS;
+  const destination = path.join(AVATAR_OF_USERS, id);
+  await mkdir(destination);
+  const uploadService = new UploadService(destination);
+  const avatarUrl = await uploadService.save(file, id);
+  await User.updateAvatar(id, avatarUrl);
+  try {
+    await fs.unlink(file.path);
+  } catch (e) {
+    console.log(e.message);
   }
-  const { _id, email } = req.user;
-  const { subscription } = req.body;
-  const result = await User.findOneAndUpdate(
-    _id,
-    { subscription },
-    { new: true }
-  );
-  if (!result) {
-    throw Error(HttpCode.NOT_FOUND, `Contact with id=${_id} not found`);
-  }
-  res.json({ email, subscription });
-};
 
-const updateAvatar = async (req, res) => {
-  const { _id } = req.user;
-  const { path: tempUpload, originalname } = req.file;
-  const filename = `${_id}_${originalname}`;
-  const uploadPath = path.join(avatarsDir, filename);
-
-  await Jimp.read(tempUpload).then((avatar) => {
-    return avatar.resize(250, 250).write(tempUpload);
+  return res.json({
+    status: 'success',
+    code: HttpCode.OK,
+    date: { avatar: avatarUrl },
   });
-  await fs.rename(tempUpload, uploadPath);
-  const avatarURL = await moveAvatarToPublic(_id, tempUpload);
-  await User.findByIdAndUpdate(_id, { avatarURL });
-
-  res.json({ avatarURL });
 };
 
-const moveAvatarToPublic = async (id, tempAvatarPath) => {
-  try {
-    const temp = path.join(__dirname, "../temp");
-    await fs.mkdir(temp, { recursive: true });
-
-    const avatar = await Jimp.read(tempAvatarPath);
-    avatar.resize(250, 250);
-
-    const uniqueFilename = `${id}_${avatar.filename}.png`;
-    const avatarPath = path.join(avatarsDir, uniqueFilename);
-
-    await avatar.writeAsync(avatarPath);
-
-    const avatarURL = `/avatars/${uniqueFilename}`;
-    await User.findByIdAndUpdate(id, { avatarURL });
-
-    await fs.unlink(tempAvatarPath);
-    return avatarURL;
-  } catch (error) {
-    throw new Error("Failed moveAvatarToPublic");
-  }
+const removeByIdController = async (req, res, next) => {
+  const id = String(req.user._id);
+  User.filter((user) => user.id !== id);
+  return res.json({
+    status: 'success',
+    code: HttpCode.OK,
+    date: { User },
+  });
 };
 
-const getById = async (req, res) => {
-  const { id } = req.params;
-  const result = await User.findById(id);
-  if (!result) {
-    throw HttpError(404, `Contact with id=${id} not found`);
-  }
-  res.json(result);
-};
-
-const removeById = async (id) => {
-  try {
-    const removedUser = await User.findByIdAndRemove(id);
-
-    if (!removedUser) {
-      throw new Error(`User with id=${id} not found.`);
-    }
-
-    console.log(`User with id=${id} has been removed from the database.`);
-    return removedUser;
-  } catch (error) {
-    console.error("Error removing user by id:", error.message);
-    throw new Error("Failed to remove user from the database.");
-  }
-};
-
-const removeAll = async () => {
-  try {
-    // Use the User model to delete all documents from the users collection
-    await User.deleteMany({});
-    console.log("All users have been removed from the database.");
-  } catch (error) {
-    console.error("Error removing all users:", error.message);
-    throw new Error("Failed to remove all users from the database.");
-  }
+const removeAllController = async (req, res, next) => {
+  User.length = 0;
+  return res.json({
+    status: 'success',
+    code: HttpCode.OK,
+    data: { message: 'All users have been removed' },
+  });
 };
 
 export default {
-  register: bodyWrapper(register),
-  login: bodyWrapper(login),
-  logout: bodyWrapper(logout),
-  getById: bodyWrapper(getById),
-  getAll: bodyWrapper(getAll),
-  current: bodyWrapper(current),
-  updateSubscription: bodyWrapper(updateSubscription),
-  updateAvatar: bodyWrapper(updateAvatar),
-  moveAvatarToPublic: bodyWrapper(moveAvatarToPublic),
-  removeById: bodyWrapper(removeById),
-  removeAll: bodyWrapper(removeAll),
+  registrationController: bodyWrapper(registrationController),
+  verifyUserEmail: bodyWrapper(verifyUserEmail),
+  resendVerifyEmail: bodyWrapper(resendVerifyEmail),
+  loginController: bodyWrapper(loginController),
+  logoutController: bodyWrapper(logoutController),
+  currentController: bodyWrapper(currentController),
+  updateController: bodyWrapper(updateController),
+  uploadAvatarController: bodyWrapper(uploadAvatarController),
+  removeByIdController: bodyWrapper(removeByIdController),
+  removeAllController: bodyWrapper(removeAllController),
 };

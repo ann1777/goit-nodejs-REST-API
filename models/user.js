@@ -1,36 +1,46 @@
-import { Schema, model } from "mongoose";
-import { handleSaveError, runValidateAtUpdate } from "./hooks.js";
-import { emailRegexp } from "../constants/user-constants.js";
+import { Schema, model } from 'mongoose';
+import { handleSaveError, runValidateAtUpdate } from './hooks.js';
+import { emailRegexp } from '../constants/user-constants.js';
 
-import Joi from "joi";
-import { emailDateRegexp } from "../constants/contacts-constants.js";
-const subOpts = ["starter", "pro", "business"];
+import Joi from 'joi';
+import { emailDateRegexp } from '../constants/contacts-constants.js';
+const subOpts = ['starter', 'pro', 'business'];
+
 const userSchema = new Schema(
   {
     email: {
       type: String,
       match: emailRegexp,
-      required: [true, "Email is required"],
+      required: [true, 'Email is required'],
       unique: true,
     },
     password: {
       type: String,
       minlength: 6,
-      required: [true, "Set password for user"],
+      required: [true, 'Set password for user'],
     },
     subscription: {
       type: String,
-      enum: ["starter", "pro", "business"],
-      default: "starter",
+      enum: ['starter', 'pro', 'business'],
+      default: 'starter',
     },
-    token: String,
-    avatarURL: String,
+    token: {
+      type: String,
+    },
+    avatarURL: {
+      type: String,
+    },
+    verify: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      required: [true, 'Verify token is required'],
+    },
   },
   { versionKey: false, timestamps: true }
 );
-
-userSchema.pre("findOneAndUpdate", runValidateAtUpdate);
-userSchema.post("save", handleSaveError);
 
 const registerSchema = Joi.object({
   subscription: Joi.string().valid(...subOpts),
@@ -52,9 +62,12 @@ const updateSubscriptionSchema = Joi.object({
     .valid(...subOpts)
     .required(),
 });
-userSchema.post("findOneAndUpdate", handleSaveError);
 
-const User = model("user", {
+userSchema.pre('findOneAndUpdate', runValidateAtUpdate);
+userSchema.post('save', handleSaveError);
+userSchema.post('findOneAndUpdate', handleSaveError);
+
+const User = model('user', {
   userSchema,
   registerSchema,
   emailSchema,
@@ -62,4 +75,4 @@ const User = model("user", {
   updateSubscriptionSchema,
 });
 
-export { User };
+export default User;
