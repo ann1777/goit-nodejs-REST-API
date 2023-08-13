@@ -31,7 +31,17 @@ const registrationController = async (req, res, next) => {
   }
 
   try {
+    const { verificationToken } = req.params;
     const newUser = await User.create({ name, email, password, gender });
+
+    const verifyEmail = {
+      to: email,
+      subject: 'Verify email',
+      html: `<a href="${BASE_URL}/api/auth/verify/${verificationToken}" target="_blank">Click to verify your email</a>`,
+    };
+
+    await sendEmail(verifyEmail);
+
     return res.status(HttpCode.CREATED).json({
       status: 'success',
       code: HttpCode.CREATED,
@@ -68,17 +78,6 @@ const verifyUserEmail = async (req, res) => {
 const resendVerifyEmail = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
-  const { error } = User.userSchema.validate(req.body);
-  if (!email) {
-    throw HttpError(400, 'missing required field email');
-  }
-
-  if (error) {
-    throw HttpError(
-      HttpCode.BAD_REQUEST,
-      `Помилка від Joi або іншої бібліотеки валідації`
-    );
-  }
 
   if (user.verify) {
     throw HttpError(400, 'Verification has already been passed');
