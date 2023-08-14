@@ -1,18 +1,18 @@
-import { User } from "../models/user.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import path, { dirname } from "path";
-import fs from "fs/promises";
-import gravatar from "gravatar";
-import Jimp from "jimp";
-import { fileURLToPath } from "url";
-import { HttpCode } from "../constants/user-constants.js";
-import bodyWrapper from "../decorators/bodyWrapper.js";
-import HttpError from "../helpers/HTTPError.js";
+import User from '../models/user.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import path, { dirname } from 'path';
+import fs from 'fs/promises';
+import gravatar from 'gravatar';
+import Jimp from 'jimp';
+import { fileURLToPath } from 'url';
+import { HttpCode } from '../constants/user-constants.js';
+import bodyWrapper from '../decorators/bodyWrapper.js';
+import HttpError from '../helpers/HTTPError.js';
 const { JWT_SECRET_KEY } = process.env;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+const avatarsDir = path.join(__dirname, '../', 'public', 'avatars');
 
 const register = async (req, res, next) => {
   const { email, password } = req.body;
@@ -35,7 +35,7 @@ const register = async (req, res, next) => {
     avatarURL,
   });
   res.status(HttpCode.CREATED).json({
-    status: "success",
+    status: 'success',
     code: HttpCode.CREATED,
     data: {
       id: newUser.id,
@@ -52,10 +52,10 @@ const login = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email, password });
   const payload = { id: user._id };
-  const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: "23h" });
+  const token = jwt.sign(payload, JWT_SECRET_KEY, { expiresIn: '23h' });
   const result = await User.findOneAndUpdate(payload, { token });
   res.json({
-    status: "success",
+    status: 'success',
     code: HttpCode.OK,
     date: {
       token,
@@ -72,9 +72,9 @@ const login = async (req, res, next) => {
 
 const getAll = async (req, res) => {
   const { _id: user } = req.body;
-  const result = await User.find({ user }, "-createdAt -updatedAt").populate(
-    "user",
-    "name email"
+  const result = await User.find({ user }, '-createdAt -updatedAt').populate(
+    'user',
+    'name email'
   );
   res.json(result);
   console.log(result);
@@ -83,7 +83,7 @@ const getAll = async (req, res) => {
 const current = (req, res) => {
   const { email, subscription } = req.user;
   res.json({
-    status: "success",
+    status: 'success',
     code: HttpCode.OK,
     date: {
       email,
@@ -94,8 +94,8 @@ const current = (req, res) => {
 
 const logout = async (req, res, next) => {
   const { _id } = req.user;
-  await User.findOneAndUpdate(_id, { token: "" });
-  res.status(HttpCode.NO_CONTENT).json({ message: "SignOut success" });
+  await User.findOneAndUpdate(_id, { token: '' });
+  res.status(HttpCode.NO_CONTENT).json({ message: 'SignOut success' });
 };
 
 const updateSubscription = async (res, req) => {
@@ -103,7 +103,7 @@ const updateSubscription = async (res, req) => {
   if (error) {
     throw new Error(
       HttpCode.BAD_REQUEST,
-      "Missing subscription field or set incorrectly"
+      'Missing subscription field or set incorrectly'
     );
   }
   const { _id, email } = req.user;
@@ -137,7 +137,7 @@ const updateAvatar = async (req, res) => {
 
 const moveAvatarToPublic = async (id, tempAvatarPath) => {
   try {
-    const temp = path.join(__dirname, "../temp");
+    const temp = path.join(__dirname, '../temp');
     await fs.mkdir(temp, { recursive: true });
 
     const avatar = await Jimp.read(tempAvatarPath);
@@ -154,7 +154,7 @@ const moveAvatarToPublic = async (id, tempAvatarPath) => {
     await fs.unlink(tempAvatarPath);
     return avatarURL;
   } catch (error) {
-    throw new Error("Failed moveAvatarToPublic");
+    throw new Error('Failed moveAvatarToPublic');
   }
 };
 
@@ -178,8 +178,8 @@ const removeById = async (id) => {
     console.log(`User with id=${id} has been removed from the database.`);
     return removedUser;
   } catch (error) {
-    console.error("Error removing user by id:", error.message);
-    throw new Error("Failed to remove user from the database.");
+    console.error('Error removing user by id:', error.message);
+    throw new Error('Failed to remove user from the database.');
   }
 };
 
@@ -187,10 +187,10 @@ const removeAll = async () => {
   try {
     // Use the User model to delete all documents from the users collection
     await User.deleteMany({});
-    console.log("All users have been removed from the database.");
+    console.log('All users have been removed from the database.');
   } catch (error) {
-    console.error("Error removing all users:", error.message);
-    throw new Error("Failed to remove all users from the database.");
+    console.error('Error removing all users:', error.message);
+    throw new Error('Failed to remove all users from the database.');
   }
 };
 

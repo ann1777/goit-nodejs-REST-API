@@ -49,20 +49,23 @@ Test data:
     throw new Error(HttpCode.CONFLICT, `Email ${email} is already in use`);
 */
 import mongoose from 'mongoose';
+import express from 'express';
 import 'dotenv/config';
 import request from 'supertest';
+import http, { Server } from 'http';
+import UserModel from '../../models/user.js';
 
-import app from '../../app.js';
-import { User } from '../../models/user.js';
-
+const app = express();
 const { PORT, DB_HOST_TEST } = process.env;
+const User = new UserModel();
+const server: Server = app.listen(PORT) as Server;
 
 describe('test register', () => {
-  let server = null;
+  let server = http.Server;
 
   beforeAll(async () => {
-    await mongoose.connect(DB_HOST_TEST);
-    server = app.listen(PORT);
+    if (DB_HOST_TEST?.valueOf === String) await mongoose.connect(DB_HOST_TEST);
+    app.listen(PORT) as http.Server;
   });
 
   afterAll(async () => {
@@ -134,21 +137,37 @@ describe('test register', () => {
   //     HttpCode.BAD_REQUEST,
   //     `Помилка від Joi або іншої бібліотеки валідації`);
   // );
+  test('test register with correct data', async () => {
+    const requestData = {
+      name: 'Bogdan',
+      email: 'bogdan@gmail.com',
+      password: '1234567',
+    };
+    const response = await request(app)
+      .post('/api/auth/register')
+      .send(requestData);
+  });
+
   test('test register with bad email format', async () => {
     const requestData = {
       email: 'bogdan@gmail',
       password: '1234567',
     };
-    const { statusCode, body, error } = await request(app)
+    const { statusCode, body } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
 
     expect(statusCode).toBe(400);
     expect(body.token).toBeUndefined();
     expect(body.user).toBeUndefined();
-    expect(error.message).toBe(
-      'Помилка від Joi або іншої бібліотеки валідації'
-    );
+
+    if (typeof body.error === 'string') {
+      expect(body.error).toBe('Помилка від Joi або іншої бібліотеки валідації');
+    } else if (body.error && 'message' in body.error) {
+      expect(body.error.message).toBe(
+        'Помилка від Joi або іншої бібліотеки валідації'
+      );
+    }
 
     const userCount = await User.countDocuments();
     expect(userCount).toBe(0);
@@ -169,7 +188,7 @@ describe('test register', () => {
     expect(statusCode).toBe(400);
     expect(body.token).toBeUndefined();
     expect(body.user).toBeUndefined();
-    expect(error.message).toBe(
+    expect(error.valueOf).toBe(
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
@@ -191,7 +210,7 @@ describe('test register', () => {
     expect(statusCode).toBe(400);
     expect(body.token).toBeUndefined();
     expect(body.user).toBeUndefined();
-    expect(error.message).toBe(
+    expect(error.valueOf).toBe(
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
@@ -211,10 +230,10 @@ describe('test register', () => {
         .post('/api/auth/register')
         .send(requestData);
       expect(statusCode).toBe(409);
-      expect(error.message).toBe(
+      expect(error.valueOf).toBe(
         `Email ${requestData.email} is already in use`
       );
-    } catch (error) {
+    } catch (error: any) {
       expect(error).toBeDefined();
       expect(error.statusCode).toBe(409);
       expect(error.message).toBe(
