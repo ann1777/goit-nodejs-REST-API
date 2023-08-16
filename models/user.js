@@ -1,4 +1,4 @@
-import { Schema, model } from 'mongoose';
+import { Schema, Model } from 'mongoose';
 import { handleSaveError, runValidateAtUpdate } from './hooks.js';
 import { emailRegexp } from '../constants/user-constants.js';
 
@@ -67,12 +67,14 @@ userSchema.pre('findOneAndUpdate', runValidateAtUpdate);
 userSchema.post('save', handleSaveError);
 userSchema.post('findOneAndUpdate', handleSaveError);
 
-const User = model('user', {
+const UserModel = new Model(
+  'user',
   userSchema,
   registerSchema,
   emailSchema,
   loginSchema,
   updateSubscriptionSchema,
-});
+  'users'
+);
 
-export default User;
+export default UserModel;

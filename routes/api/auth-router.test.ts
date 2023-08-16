@@ -52,20 +52,19 @@ import mongoose from 'mongoose';
 import express from 'express';
 import 'dotenv/config';
 import request from 'supertest';
-import http, { Server } from 'http';
-import UserModel from '../../models/user.js';
+import http from 'http';
+import UserModel from '../../models/user';
 
-const app = express();
 const { PORT, DB_HOST_TEST } = process.env;
-const User = new UserModel();
-const server: Server = app.listen(PORT) as Server;
+const userInstance = new UserModel();
 
 describe('test register', () => {
   let server = http.Server;
 
   beforeAll(async () => {
-    if (DB_HOST_TEST?.valueOf === String) await mongoose.connect(DB_HOST_TEST);
-    app.listen(PORT) as http.Server;
+    if (DB_HOST_TEST) await mongoose.connect(DB_HOST_TEST);
+    const app = express();
+    app.listen({ PORT });
   });
 
   afterAll(async () => {
@@ -74,7 +73,7 @@ describe('test register', () => {
   });
 
   afterEach(async () => {
-    await User.deleteMany({});
+    await userInstance.deleteMany({});
   });
 
   // Test_case1: {"Bogdan", "bogdan@gmail.com","1234567"}; => {
@@ -100,7 +99,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe('starter');
 
-    const user = await User.findOne({ email: requestData.email });
+    const user = await userInstance.findOne({ email: requestData.email });
     expect(user?.name).toBe(requestData.name);
   });
 
@@ -128,7 +127,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe(requestData.subscription);
 
-    const user = await User.findOne({ email: requestData.email });
+    const user = await userInstance.findOne({ email: requestData.email });
     expect(user?.name).toBe(requestData.name);
     expect(user?.subscription).toBe(requestData.subscription);
   });
@@ -169,7 +168,7 @@ describe('test register', () => {
       );
     }
 
-    const userCount = await User.countDocuments();
+    const userCount = await userInstance.countDocuments();
     expect(userCount).toBe(0);
   });
 
@@ -192,7 +191,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await User.countDocuments();
+    const userCount = await userInstance.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case5: { bogdan@gmail.com, } => throw new Error(
@@ -214,7 +213,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await User.countDocuments();
+    const userCount = await userInstance.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case6: Second time register the same user { name: "Bogdan", email: "bogdan@gmail.com", password: "1234567" }

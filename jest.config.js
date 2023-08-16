@@ -1,12 +1,12 @@
 export default {
   preset: 'ts-jest/presets/default',
+  setupFilesAfterEnv: ['./node_modules/@shelf/jest-mongodb/lib/setup.js'],
   testEnvironment: 'node',
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1', // Adjust the path based on your project structure
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
     transform_regex: 'ts-jest',
-    // '^.+\\.tsx?$': 'ts-jest',
   },
   globals: {
     'ts-jest': {

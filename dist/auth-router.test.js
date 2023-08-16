@@ -58,17 +58,16 @@ const express_1 = __importDefault(require("express"));
 require("dotenv/config");
 const supertest_1 = __importDefault(require("supertest"));
 const http_1 = __importDefault(require("http"));
-const user_js_1 = __importDefault(require("../../models/user.js"));
-const app = (0, express_1.default)();
+const user_1 = __importDefault(require("../../models/user"));
 const { PORT, DB_HOST_TEST } = process.env;
-const userInstance = new user_js_1.default();
-const server = app.listen({ PORT });
+const userInstance = new user_1.default();
 describe('test register', () => {
     let server = http_1.default.Server;
     beforeAll(async () => {
         if (DB_HOST_TEST)
             await mongoose_1.default.connect(DB_HOST_TEST);
-        app.listen(PORT);
+        const app = (0, express_1.default)();
+        app.listen({ PORT });
     });
     afterAll(async () => {
         await mongoose_1.default.connection.close();
