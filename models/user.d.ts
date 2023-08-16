@@ -7,7 +7,10 @@ declare module '../../models/user.js' {
   }
 
   interface UserModel extends Model<UserDocument> {
-    // Define static methods or properties here
+    name?: string;
+    email: string;
+    password: string;
+    subscription: string;
   }
 
   const User: UserModel;

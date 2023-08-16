@@ -1,3 +1,4 @@
+import jest from 'jest';
 import { Schema, Model } from 'mongoose';
 import { handleSaveError, runValidateAtUpdate } from './hooks.js';
 import { emailRegexp } from '../constants/user-constants.js';
@@ -8,6 +9,10 @@ const subOpts = ['starter', 'pro', 'business'];
 
 const userSchema = new Schema(
   {
+    name: {
+      type: String,
+      required: false,
+    },
     email: {
       type: String,
       match: emailRegexp,
@@ -38,6 +43,15 @@ const userSchema = new Schema(
       type: String,
       required: [true, 'Verify token is required'],
     },
+    deleteMany: () => ({
+      deleteMany: jest.fn(),
+    }),
+    findOne: () => ({
+      findOne: jest.fn(),
+    }),
+    countDocuments: () => ({
+      countDocuments: jest.fn(),
+    }),
   },
   { versionKey: false, timestamps: true }
 );

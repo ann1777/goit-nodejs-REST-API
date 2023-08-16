@@ -54,17 +54,57 @@ import 'dotenv/config';
 import request from 'supertest';
 import http from 'http';
 import UserModel from '../../models/user';
+import { describe, beforeAll, afterAll, afterEach, test } from '@jest/globals';
+
+const app = express();
+
+class UserModelMock {
+  static create: jest.Mock<Promise<typeof UserModel>, [typeof UserModel]> =
+    jest.fn();
+  static findOne: jest.Mock<
+    Promise<typeof UserModel | null>,
+    [Partial<typeof UserModel>]
+  > = jest.fn();
+  static countDocuments: jest.Mock<Promise<number>, []> = jest.fn();
+  static deleteMany: jest.Mock<Promise<void>, []> = jest.fn();
+}
 
 const { PORT, DB_HOST_TEST } = process.env;
-const userInstance = new UserModel();
+
+describe('insert', () => {
+  let server: http.Server;
+  let db: mongoose.Connection;
+
+  beforeAll(async () => {
+    await mongoose.connect(DB_HOST_TEST);
+    server = app.listen(PORT);
+    db = mongoose.connection;
+  });
+
+  afterAll(async () => {
+    await mongoose.connection.close();
+    server.close();
+  });
+
+  test('should insert a doc into collection', async () => {
+    const users = db.collection('users');
+
+    const mockUser = { _id: 'user-id', name: 'John' };
+    await users.insertOne({ mockUser });
+
+    const insertedUser = await users.findOne({ id: 'user-id' });
+    expect({ insertedUser }).toEqual({ mockUser });
+  });
+});
 
 describe('test register', () => {
-  let server = http.Server;
+  let server: http.Server;
+  let db: mongoose.Connection;
 
   beforeAll(async () => {
     if (DB_HOST_TEST) await mongoose.connect(DB_HOST_TEST);
-    const app = express();
-    app.listen({ PORT });
+    server = app.listen(Number(PORT));
+    db = mongoose.connection;
   });
 
   afterAll(async () => {
@@ -73,7 +113,7 @@ describe('test register', () => {
   });
 
   afterEach(async () => {
-    await userInstance.deleteMany({});
+    await UserModelMock.deleteMany();
   });
 
   // Test_case1: {"Bogdan", "bogdan@gmail.com","1234567"}; => {
@@ -87,7 +127,7 @@ describe('test register', () => {
       email: 'bogdan@gmail.com',
       password: '1234567',
     };
-    const { statusCode, body } = await request(app)
+    const { statusCode, body } = await request(server)
       .post('/api/auth/register')
       .send(requestData);
 
@@ -99,7 +139,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe('starter');
 
-    const user = await userInstance.findOne({ email: requestData.email });
+    const user = await UserModelMock.findOne({ email: requestData.email });
     expect(user?.name).toBe(requestData.name);
   });
 
@@ -116,7 +156,7 @@ describe('test register', () => {
       subscription: 'pro',
     };
 
-    const { statusCode, body } = await request(app)
+    const { statusCode, body } = await request(server)
       .post('/api/auth/register')
       .send(requestData);
     expect(statusCode).toBe(201);
@@ -127,7 +167,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe(requestData.subscription);
 
-    const user = await userInstance.findOne({ email: requestData.email });
+    const user = await UserModelMock.findOne({ email: requestData.email });
     expect(user?.name).toBe(requestData.name);
     expect(user?.subscription).toBe(requestData.subscription);
   });
@@ -136,23 +176,13 @@ describe('test register', () => {
   //     HttpCode.BAD_REQUEST,
   //     `Помилка від Joi або іншої бібліотеки валідації`);
   // );
-  test('test register with correct data', async () => {
-    const requestData = {
-      name: 'Bogdan',
-      email: 'bogdan@gmail.com',
-      password: '1234567',
-    };
-    const response = await request(app)
-      .post('/api/auth/register')
-      .send(requestData);
-  });
 
   test('test register with bad email format', async () => {
     const requestData = {
       email: 'bogdan@gmail',
       password: '1234567',
     };
-    const { statusCode, body } = await request(app)
+    const { statusCode, body } = await request(server)
       .post('/api/auth/register')
       .send(requestData);
 
@@ -168,7 +198,7 @@ describe('test register', () => {
       );
     }
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModelMock.countDocuments();
     expect(userCount).toBe(0);
   });
 
@@ -180,7 +210,7 @@ describe('test register', () => {
     const requestData = {
       password: '1234567',
     };
-    const { statusCode, body, error } = await request(app)
+    const { statusCode, body, error } = await request(server)
       .post('/api/auth/register')
       .send(requestData);
 
@@ -191,7 +221,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModelMock.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case5: { bogdan@gmail.com, } => throw new Error(
@@ -202,7 +232,7 @@ describe('test register', () => {
     const requestData = {
       email: 'bogdan@gmail.com',
     };
-    const { statusCode, body, error } = await request(app)
+    const { statusCode, body, error } = await request(server)
       .post('/api/auth/register')
       .send(requestData);
 
@@ -213,7 +243,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModelMock.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case6: Second time register the same user { name: "Bogdan", email: "bogdan@gmail.com", password: "1234567" }
@@ -223,9 +253,9 @@ describe('test register', () => {
       email: 'bogdan@gmail.com',
       password: '1234567',
     };
-    await request(app).post('/api/auth/register').send(requestData);
+    await request(server).post('/api/auth/register').send(requestData);
     try {
-      const { statusCode, body, error } = await request(app)
+      const { statusCode, body, error } = await request(server)
         .post('/api/auth/register')
         .send(requestData);
       expect(statusCode).toBe(409);

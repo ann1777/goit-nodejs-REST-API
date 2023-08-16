@@ -6,11 +6,6 @@ export default {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    transform_regex: 'ts-jest',
-  },
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
+    '^.+\\.tsx?$': 'ts-jest',
   },
 };

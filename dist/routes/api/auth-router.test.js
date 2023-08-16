@@ -58,6 +58,7 @@ const express_1 = __importDefault(require("express"));
 require("dotenv/config");
 const supertest_1 = __importDefault(require("supertest"));
 const globals_1 = require("@jest/globals");
+const app = (0, express_1.default)();
 class UserModelMock {
 }
 UserModelMock.create = jest.fn();
@@ -65,13 +66,34 @@ UserModelMock.findOne = jest.fn();
 UserModelMock.countDocuments = jest.fn();
 UserModelMock.deleteMany = jest.fn();
 const { PORT, DB_HOST_TEST } = process.env;
+(0, globals_1.describe)('insert', () => {
+    let server;
+    let db;
+    (0, globals_1.beforeAll)(async () => {
+        await mongoose_1.default.connect(DB_HOST_TEST);
+        server = app.listen(PORT);
+        db = mongoose_1.default.connection;
+    });
+    (0, globals_1.afterAll)(async () => {
+        await mongoose_1.default.connection.close();
+        server.close();
+    });
+    (0, globals_1.test)('should insert a doc into collection', async () => {
+        const users = db.collection('users');
+        const mockUser = { _id: 'user-id', name: 'John' };
+        await users.insertOne({ mockUser });
+        const insertedUser = await users.findOne({ id: 'user-id' });
+        expect({ insertedUser }).toEqual({ mockUser });
+    });
+});
 (0, globals_1.describe)('test register', () => {
     let server;
+    let db;
     (0, globals_1.beforeAll)(async () => {
         if (DB_HOST_TEST)
             await mongoose_1.default.connect(DB_HOST_TEST);
-        const app = (0, express_1.default)();
-        server = app.listen(Number({ PORT }));
+        server = app.listen(Number(PORT));
+        db = mongoose_1.default.connection;
     });
     (0, globals_1.afterAll)(async () => {
         await mongoose_1.default.connection.close();

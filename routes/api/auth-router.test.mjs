@@ -49,29 +49,28 @@ Test data:
     throw new Error(HttpCode.CONFLICT, `Email ${email} is already in use`);
 */
 import mongoose from 'mongoose';
-import { Server } from 'http';
+import http from 'http';
 import 'dotenv/config';
 import request from 'supertest';
 import express from 'express';
 import app from '../../app.js';
 import UserModel from '../../models/user.js';
 import { describe, beforeAll, afterAll, afterEach, test } from 'jest';
-const userInstance = new UserModel();
+
 const { PORT, DB_HOST_TEST } = process.env;
 
 describe('insert', () => {
-  let connection;
-  let server: Server | null = null;
-  let db;
+  // let server: http.Server;
 
   beforeAll(async () => {
-    await mongoose.connect(DB_HOST_TEST);
-    server = app.listen(PORT);
-    const userInstance = new UserModel();
+    const db = await mongoose.connect(DB_HOST_TEST);
+    const server = app.listen(PORT);
+    const users = db.collection('users');
   });
 
   afterAll(async () => {
-    await connection.close();
+    await mongoose.connection.close();
+    server.close();
   });
 
   test('should insert a doc into collection', async () => {
@@ -86,12 +85,10 @@ describe('insert', () => {
 });
 
 describe('test register', () => {
-  let server = null;
-  let app;
-
   beforeAll(async () => {
-    await mongoose.connect(DB_HOST_TEST);
-    server = app.listen(PORT);
+    if (DB_HOST_TEST) await mongoose.connect(DB_HOST_TEST);
+    const appInstance = express();
+    const server = appInstance.listen(PORT);
   });
 
   afterAll(async () => {
@@ -100,7 +97,7 @@ describe('test register', () => {
   });
 
   afterEach(async () => {
-    await userInstance.deleteMany({});
+    await UserModel.deleteMany({});
   });
 
   // Test_case1: {"Bogdan", "bogdan@gmail.com","1234567"}; => {
@@ -114,7 +111,7 @@ describe('test register', () => {
       email: 'bogdan@gmail.com',
       password: '1234567',
     };
-    let user = await userInstance.create(requestData);
+    const user = await UserModel.create(requestData);
     const { statusCode, body } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
@@ -127,7 +124,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe('starter');
 
-    let user = await userInstance.findOne({ email: requestData.email });
+    const user = await UserModel.findOne({ email: requestData.email });
     expect(user?.name).toBe(requestData.name);
   });
 
@@ -144,7 +141,7 @@ describe('test register', () => {
       password: '7894561',
       subscription: 'pro',
     };
-    let user = await userInstance.create(requestData);
+    let user = await UserModel.create(requestData);
     const { statusCode, body } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
@@ -156,7 +153,7 @@ describe('test register', () => {
     expect(body.user.email).toBe(requestData.email);
     expect(body.user.subscription).toBe(requestData.subscription);
 
-    let user1 = await userInstance.findOne({ email: requestData.email });
+    let user1 = await UserModel.findOne({ email: requestData.email });
     expect(user1?.name).toBe(requestData.name);
     expect(user1?.subscription).toBe(requestData.subscription);
   });
@@ -170,7 +167,7 @@ describe('test register', () => {
       email: 'bogdan@gmail',
       password: '1234567',
     };
-    let user = await userInstance.create(requestData);
+    let user = await UserModel.create(requestData);
     const { statusCode, body, error } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
@@ -182,7 +179,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModel.countDocuments();
     expect(userCount).toBe(0);
   });
 
@@ -194,7 +191,7 @@ describe('test register', () => {
     const requestData = {
       password: '1234567',
     };
-    let user = await userInstance.create(requestData);
+    let user = await UserModel.create(requestData);
     const { statusCode, body, error } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
@@ -206,7 +203,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModel.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case5: { bogdan@gmail.com, } => throw new Error(
@@ -217,7 +214,7 @@ describe('test register', () => {
     const requestData = {
       email: 'bogdan@gmail.com',
     };
-    let user = await userInstance.create(requestData);
+    let user = await UserModel.create(requestData);
     const { statusCode, body, error } = await request(app)
       .post('/api/auth/register')
       .send(requestData);
@@ -229,7 +226,7 @@ describe('test register', () => {
       'Помилка від Joi або іншої бібліотеки валідації'
     );
 
-    const userCount = await userInstance.countDocuments();
+    const userCount = await UserModel.countDocuments();
     expect(userCount).toBe(0);
   });
   // Test_case6: Second time register the same user { name: "Bogdan", email: "bogdan@gmail.com", password: "1234567" }
@@ -239,7 +236,7 @@ describe('test register', () => {
       email: 'bogdan@gmail.com',
       password: '1234567',
     };
-    let user = await userInstance.create(requestData);
+    let user = await UserModel.create(requestData);
     await request(app).post('/api/auth/register').send(requestData);
     await request(app).post('/api/auth/register').send(requestData);
     try {
